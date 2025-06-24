@@ -25,19 +25,15 @@ def kmer_pairs(sequence):
 
     if len(sequence) != 41:
         raise ValueError("The RNA sequence must have a length of 41.")
-
-    # Get the 21st nucleotide
+        
     central_nucleotide = sequence[20]  # 21st position is at index 20 (0-based indexing)
 
-    # Generate pairs with every other nucleotide
-    #pairs = [central_nucleotide + nucleotide for nucleotide in sequence]
     pairs = [
         central_nucleotide + nucleotide
         for i, nucleotide in enumerate(sequence)
         # if i != 20  # Exclude pairing with itself
     ]
 
-    # Return as a comma-separated string
     return ','.join(pairs)
 
 def kemer_encoding(sequence, kmer):
@@ -45,10 +41,8 @@ def kemer_encoding(sequence, kmer):
     if not sequence or not isinstance(sequence, str):
         raise ValueError("sequence must be a non-empty string.")
 
-    # Split the sequence into k-mers (comma-separated nucleotide pairs)
     sequence_split = sequence.split(',')
 
-    # Encode the sequence using each kemer_2 mapping
     encodings = []
     for item in kmer:
         values = item["Values"]
@@ -67,24 +61,19 @@ class Kmer_Dataset(Dataset):
         return len(self.sequences)
 
     def __getitem__(self, idx):
-        # Generate input sequence from the RNA sequence
         sequence = self.sequences[idx]
         input_sequence = kmer_pairs(sequence)
 
-        # Encode the sequence
         encodings = kemer_encoding(input_sequence, self.kmer)
         encodings_tensor = torch.tensor(encodings, dtype=torch.float32)
-
-        # Convert the label to a tensor
+        
         label = torch.tensor(float(self.labels[idx]), dtype=torch.float32)  # Adjust dtype as needed
         return encodings_tensor, label
 
 def generate_dna_bert_embeddings(sequences):
 
-    # 指定本地模型路径
-    local_model_path = r"/home/ys/shenpeng/1/DNABERT-2-117M"
+    local_model_path = "./DNABERT-2-117M"
 
-    # 加载本地模型和分词器
     tokenizer = AutoTokenizer.from_pretrained(local_model_path, trust_remote_code=True)
     model = AutoModel.from_pretrained(local_model_path, trust_remote_code=True)
 
@@ -95,21 +84,18 @@ def generate_dna_bert_embeddings(sequences):
     max_length = 14
 
     for sequence in sequences:
-
-        # 对输入序列进行编码
+        
         inputs = tokenizer(sequence, return_tensors='pt', padding='max_length', truncation=True,
                            max_length=max_length).to(device)
         input_ids = inputs['input_ids'].to(device)
         attention_mask = inputs['attention_mask'].to(device)
 
-        # 生成嵌入向量
         with torch.no_grad():
-            hidden_states = model(input_ids, attention_mask=attention_mask)[0]  # 获取最后一层隐藏状态
+            hidden_states = model(input_ids, attention_mask=attention_mask)[0]  
 
         hidden_states = hidden_states.squeeze(0)
         embeddings.append(hidden_states)
 
-    # 返回所有序列的嵌入向量
     return torch.stack(embeddings)
 
 class DNA_BERT_Dataset(Dataset):
@@ -152,21 +138,15 @@ def read_dataset(data_file):
     return dataset
 
 def load_data_from_csv(csv_path):
-    """
-    从CSV文件加载数据和标签
-    :param csv_path: CSV文件路径
-    :return: (序列列表, 标签列表)
-    """
+    
     df = pd.read_csv(csv_path)
 
-    # 验证数据列是否存在
     if 'seq' not in df.columns or 'label' not in df.columns:
         raise ValueError("CSV文件必须包含 'seq' 和 'label' 列")
 
     sequences = df['seq'].tolist()
     labels = df['label'].values
 
-    # 验证序列长度
     for idx, seq in enumerate(sequences):
         if len(seq) != 41:
             raise ValueError(f"第 {idx + 1} 行序列长度错误: 期望41，实际{len(seq)}")
@@ -175,40 +155,38 @@ def load_data_from_csv(csv_path):
 
 
 def save_features(features, filename, base_dir="./dataset/U"):
-    # 创建目录结构
+    
     feature_dir = Path(base_dir)
     feature_dir.mkdir(parents=True, exist_ok=True)
 
-    # 构建完整路径
     save_path = feature_dir / filename
 
-    # 统一转换为NumPy数组
     if isinstance(features, torch.Tensor):
-        # 处理GPU Tensor：先移动到CPU再转换
         numpy_features = features.cpu().numpy()
     elif isinstance(features, np.ndarray):
         numpy_features = features
     else:
         raise TypeError("仅支持保存Tensor或Numpy数组，当前类型为: {}".format(type(features)))
 
-    # 保存为NumPy格式
     np.save(save_path, numpy_features)
 
     print(f"✅ 保存成功: {save_path} | 维度: {numpy_features.shape} | 格式: NumPy数组")
 
 
 def one_hot(seq):
-    """将RNA序列转换为one-hot编码"""
+    
     a_vec = [1.0 if nucleotide == 'A' else 0.0 for nucleotide in seq]
     c_vec = [1.0 if nucleotide == 'C' else 0.0 for nucleotide in seq]
     g_vec = [1.0 if nucleotide == 'G' else 0.0 for nucleotide in seq]
     u_vec = [1.0 if nucleotide in ['U', 'T'] else 0.0 for nucleotide in seq]
+    
     return a_vec, c_vec, g_vec, u_vec
 
 
 def one_hot_ncp(seq):
-    """组合 One-hot + NCP 编码，输出维度 [7 x seq_len]"""
+    
     combined_vecs = []
+    
     for nucleotide in seq:
         one_hot = {
             'A': [1, 0, 0, 0],
@@ -229,13 +207,10 @@ def one_hot_ncp(seq):
         combined = one_hot + ncp
         combined_vecs.append(combined)
 
-    # 返回 shape: [seq_len, 7]
     return np.array(combined_vecs, dtype=np.float32)
 
-
-
 def process_full_pipeline(csv_path, kmer_params):
-    # 加载原始数据
+
     sequences, labels = load_data_from_csv(csv_path)
     
     kmer_features = []
@@ -260,6 +235,6 @@ def process_full_pipeline(csv_path, kmer_params):
 
 
 if __name__ == "__main__":
-    input_csv = r"/home/ys/SP/1_5/my_model/dataset/U/train.csv"  # 确保路径正确
-    kmer_params = kmer  # 替换为实际的k-mer参数
+    input_csv = "./dataset/U/train.csv" 
+    kmer_params = kmer  
     process_full_pipeline(input_csv, kmer_params)
