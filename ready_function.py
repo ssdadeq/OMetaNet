@@ -7,7 +7,6 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoModel, AutoTokenizer
 from kmer import *
 from pathlib import Path
-# os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -175,7 +174,7 @@ def load_data_from_csv(csv_path):
     return sequences, labels
 
 
-def save_features(features, filename, base_dir=r"/home/ys/SP/1_5/my_model/dataset/U"):
+def save_features(features, filename, base_dir="./dataset/U"):
     # 创建目录结构
     feature_dir = Path(base_dir)
     feature_dir.mkdir(parents=True, exist_ok=True)
@@ -239,37 +238,25 @@ def process_full_pipeline(csv_path, kmer_params):
     # 加载原始数据
     sequences, labels = load_data_from_csv(csv_path)
     
-    # 1. 生成k-mer特征
     kmer_features = []
     for seq in sequences:
         pairs = kmer_pairs(seq)
         encoding = kemer_encoding(pairs, kmer_params)
         kmer_features.append(encoding)
-    kmer_features = np.array(kmer_features)  # 形状: [样本数, 特征数, 特征维度]
+    kmer_features = np.array(kmer_features)  
 
-    # 2. 生成DNA-BERT嵌入
     bert_embeddings = generate_dna_bert_embeddings(sequences)
 
-    # 3. 生成one-hot编码（形状: [样本数, 41, 4]）
-    # one_hot_features = []
-    # for seq in sequences:
-    #     a, c, g, u = one_hot(seq)
-    #     seq_one_hot = np.stack([a, c, g, u], axis=1).astype(np.float32)
-    #     one_hot_features.append(seq_one_hot)
-    # one_hot_features = np.array(one_hot_features)
-
-    # 3. 生成 one-hot + NCP 编码（形状: [样本数, 41, 7]）
     one_hot_ncp_features = []
     for seq in sequences:
-        combined = one_hot_ncp(seq)  # 输出 shape: [41, 7]
+        combined = one_hot_ncp(seq)  
         one_hot_ncp_features.append(combined)
-    one_hot_ncp_features = np.array(one_hot_ncp_features)  # [样本数, 41, 7]
-
+    one_hot_ncp_features = np.array(one_hot_ncp_features)  
 
     save_features(kmer_features, "kmer_features_train.npy")
     save_features(bert_embeddings.cpu().numpy(), "bert_embeddings_train.npy")
     save_features(one_hot_ncp_features, "one_hot_ncp_features_train.npy")
-    save_features(labels, "labels.npy")  # 保存标签
+    save_features(labels, "labels.npy")  
 
 
 if __name__ == "__main__":
