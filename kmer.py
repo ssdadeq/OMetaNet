@@ -1,4 +1,4 @@
-kmer = [
+KN-PairMatrix_values = [
     {
         "Key": "Roll (DNA-protein complex)",
         "Values": {
