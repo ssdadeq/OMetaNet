@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoModel, AutoTokenizer
 from kmer import *
-
+from pathlib import Path
 # os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -110,13 +110,6 @@ def generate_dna_bert_embeddings(sequences):
         hidden_states = hidden_states.squeeze(0)
         embeddings.append(hidden_states)
 
-        # 利用 attention_mask 过滤填充部分的嵌入
-        # mask_expanded = attention_mask.unsqueeze(-1).expand(hidden_states.size())
-        # filtered_hidden_states = hidden_states * mask_expanded  # 忽略填充位置
-        # mean_embedding = filtered_hidden_states.sum(dim=1) / attention_mask.sum(dim=1, keepdim=True)  # 取非填充位置的均值
-        # embeddings.append(mean_embedding)
-
-
     # 返回所有序列的嵌入向量
     return torch.stack(embeddings)
 
@@ -159,19 +152,6 @@ def read_dataset(data_file):
     dataset = PairwiseDataset(X, Y)
     return dataset
 
-
-
-
-import os
-import numpy as np
-import torch
-import pandas as pd
-from pathlib import Path
-
-# 设备配置
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
 def load_data_from_csv(csv_path):
     """
     从CSV文件加载数据和标签
@@ -196,12 +176,6 @@ def load_data_from_csv(csv_path):
 
 
 def save_features(features, filename, base_dir=r"/home/ys/SP/1_5/my_model/dataset/U"):
-    """
-    增强版特征存储函数(NumPy专用版)
-    :param features: 要保存的数据（支持Tensor/ndarray）
-    :param filename: 目标文件名（建议使用.npy后缀）
-    :param base_dir: 存储根目录（自动创建）
-    """
     # 创建目录结构
     feature_dir = Path(base_dir)
     feature_dir.mkdir(parents=True, exist_ok=True)
@@ -262,11 +236,9 @@ def one_hot_ncp(seq):
 
 
 def process_full_pipeline(csv_path, kmer_params):
-    """完整数据处理流水线（包含k-mer、DNA-BERT和one-hot编码）"""
     # 加载原始数据
     sequences, labels = load_data_from_csv(csv_path)
-
-    # ================== 特征生成 ==================
+    
     # 1. 生成k-mer特征
     kmer_features = []
     for seq in sequences:
@@ -293,13 +265,12 @@ def process_full_pipeline(csv_path, kmer_params):
         one_hot_ncp_features.append(combined)
     one_hot_ncp_features = np.array(one_hot_ncp_features)  # [样本数, 41, 7]
 
-    # ================== 数据存储 ==================
+
     save_features(kmer_features, "kmer_features_train.npy")
     save_features(bert_embeddings.cpu().numpy(), "bert_embeddings_train.npy")
-    # save_features(one_hot_features, "one_hot_features_train.npy")
     save_features(one_hot_ncp_features, "one_hot_ncp_features_train.npy")
     save_features(labels, "labels.npy")  # 保存标签
-# ... [其他已有函数，如load_data_from_csv, save_features等] ...
+
 
 if __name__ == "__main__":
     input_csv = r"/home/ys/SP/1_5/my_model/dataset/U/train.csv"  # 确保路径正确
