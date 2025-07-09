@@ -4,3 +4,5 @@ Accurate identification of RNA 2'-O-methylation (2OM) sites is crucial for under
 Due to the size limit of GitHub upload file, we have uploaded embedding and weight to onedrive:
 OMetaNet model：https://1drv.ms/u/c/6c930042add3d335/Ea1bMJFMBdJEvsM2_walpcABfwWrMe-pfyAr-A5lG4DGHQ?e=4hhBKi
 dataset：https://1drv.ms/f/c/6c930042add3d335/EoBWAoCt8MFEuRvhvoJOd_0B3mPKk-2kZRhaICM6tXsOzg?e=wqMcvP
+
+To run the code, simply execute test_generic.py
